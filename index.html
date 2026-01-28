@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LoL-BTI: 심리 욕구 기반 포지션 진단</title>
@@ -46,11 +49,33 @@
     <div id="result">
         <div class="result-header">역할군별 '롤BTI' 유형 분석 결과</div>
         <div id="roleDisplay"></div>
+        
+        <div id="statsSection" style="margin-top:40px;">
+            <h3 style="color:#c8aa6e; text-align:center;">실시간 참여자 분포 vs 실제 인게임 지표</h3>
+            <canvas id="myChart" style="background: #1a232e; border-radius: 8px; padding: 10px;"></canvas>
+        </div>
+
         <button onclick="location.reload()" style="width: 100%; margin-top: 20px;">다시 테스트하기</button>
     </div>
 </div>
 
 <script>
+    // 1. Firebase 설정
+    const firebaseConfig = {
+        apiKey: "AIzaSyDz6_PCsvr9BqTqNDAmPocLYeXHgGIedUE",
+        authDomain: "lolbti.firebaseapp.com",
+        projectId: "lolbti",
+        storageBucket: "lolbti.firebasestorage.app",
+        messagingSenderId: "951534309687",
+        appId: "1:951534309687:web:5cdab7461960b40239cab2",
+        measurementId: "G-7V7E32VBYJ"
+    };
+
+    // 2. 초기화
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // 3. 변수 및 질문 설정
     const questions = [
         { t: "A", q: "나는 팀원의 간섭 없이 나만의 독립적인 전략과 의지로 게임을 풀어나가는 것이 즐겁다." },
         { t: "C", q: "상대 플레이어와 1대1 대결에서 승리하여 나의 실력을 증명할 때 짜릿함을 느낀다." },
@@ -67,6 +92,7 @@
     let currentQ = 0;
     let scores = { A: 0, C: 0, R: 0 };
 
+    // 4. 퀴즈 진행 로직
     function updateQ() {
         if(currentQ < questions.length) {
             document.getElementById('qText').innerText = (currentQ + 1) + ". " + questions[currentQ].q;
@@ -82,6 +108,7 @@
         updateQ();
     }
 
+    // 5. 결과 계산 및 저장
     function showResult() {
         document.getElementById('quiz').style.display = 'none';
         document.getElementById('progressFill').style.width = "100%";
@@ -90,9 +117,11 @@
 
         const { A, C, R } = scores;
         let content = "";
+        let finalRole = ""; // 저장용 역할군 키워드
 
         // 논문 기반 데이터 매칭 로직
         if (R >= 13 && A <= 9) {
+            finalRole = "서포터";
             content = generateHTML(
                 "5. 서포터 (Support)", "헌신적인 수호자형", "(R-a)",
                 "팀원을 보호하고 시야를 확보하며, 타인과의 유대감과 소통에서 가장 큰 플레이 동기를 얻습니다.",
@@ -101,6 +130,7 @@
                 "유능성(C) 중: 팀의 전반적인 성공에 기여하는 것으로 유능성을 충족합니다."
             );
         } else if (A >= 11 && C >= 16 && R <= 8) {
+            finalRole = "탑";
             content = generateHTML(
                 "1. 탑 (Top)", "고독한 자수성가형", "(A-C-r)",
                 "독립적인 의사결정과 1대1 라인전에서의 승리를 통해 가장 큰 에너지를 얻습니다.",
@@ -109,6 +139,7 @@
                 "관계성(R) 하: 타 라인과의 교류가 적어 관계성 욕구 충족이 동기 부여에 미치는 영향이 미미합니다."
             );
         } else if (A >= 11 && R >= 11 && C <= 14) {
+            finalRole = "정글";
             content = generateHTML(
                 "2. 정글 (Jungle)", "자유로운 조율자형", "(A-R-c)",
                 "맵 전체를 자유롭게 누비며 팀원들을 지원하고 협력 교전을 이끌어낼 때 만족합니다.",
@@ -117,6 +148,7 @@
                 "유능성(C) 하: 직접적인 대인 전투보다는 중립 몬스터 사냥 비중이 있어, 경쟁 승리를 통한 유능성 획득은 상대적으로 낮게 나타납니다."
             );
         } else if (C >= 15 && A <= 8) {
+            finalRole = "미드";
             content = generateHTML(
                 "3. 미드 (Mid)", "경쟁적 전략가형", "(C-R-a)",
                 "가장 치열한 중앙에서 실력을 겨루고, 빠른 판단력을 바탕으로 팀의 교전에 개입하는 것을 즐깁니다.",
@@ -125,6 +157,7 @@
                 "자율성(A) 하: 부여된 역할과 강제되는 플레이가 많아 상대적으로 자율성 획득에는 불리한 조건입니다."
             );
         } else {
+            finalRole = "바텀";
             content = generateHTML(
                 "4. 바텀 (AD Carry)", "야심 찬 성과주의형", "(C-R)",
                 "팀의 후반을 책임지는 핵심 딜러로서, 치열한 경쟁 속에서 성취감을 느끼고 서포터와의 호흡을 중시합니다.",
@@ -133,7 +166,11 @@
                 "자율성(A) 중: 주도적인 딜링 능력과 포지셔닝을 통해 자율성을 경험합니다."
             );
         }
+
         display.innerHTML = content;
+        
+        // 결과가 나온 뒤 DB에 저장하고 그래프 그리기
+        saveData(finalRole);
     }
 
     function generateHTML(role, type, code, feat, p1, p2, p3) {
@@ -149,6 +186,84 @@
         `;
     }
 
+    // 6. DB 저장 함수
+    function saveData(roleName) {
+        db.collection("test_results").add({
+            role: roleName,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => {
+            console.log("데이터 저장 완료: " + roleName);
+            loadStats(); 
+        }).catch((error) => {
+            console.error("저장 실패: ", error);
+        });
+    }
+
+    // 7. 통계 및 차트 함수
+    function loadStats() {
+        db.collection("test_results").get().then((querySnapshot) => {
+            let stats = { "탑": 0, "정글": 0, "미드": 0, "바텀": 0, "서포터": 0 };
+            
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                if(data.role.includes("탑")) stats["탑"]++;
+                else if(data.role.includes("정글")) stats["정글"]++;
+                else if(data.role.includes("미드")) stats["미드"]++;
+                else if(data.role.includes("바텀")) stats["바텀"]++;
+                else if(data.role.includes("서포터")) stats["서포터"]++;
+            });
+
+            drawChart(stats);
+        });
+    }
+
+    // 8. 차트 그리기 (누락되었던 부분)
+    let myChart;
+    function drawChart(stats) {
+        const ctx = document.getElementById('myChart').getContext('2d');
+        
+        // 논문 데이터: 실제 롤 시즌1 로그 기반 분포
+        const paperData = [17.05, 21.41, 21.84, 25.23, 14.44]; 
+        const total = Object.values(stats).reduce((a, b) => a + b, 0);
+        
+        // 유저 데이터가 0일 경우 대비
+        const userData = total === 0 ? [0,0,0,0,0] : [
+            (stats["탑"]/total*100).toFixed(1),
+            (stats["정글"]/total*100).toFixed(1),
+            (stats["미드"]/total*100).toFixed(1),
+            (stats["바텀"]/total*100).toFixed(1),
+            (stats["서포터"]/total*100).toFixed(1)
+        ];
+
+        if (myChart) myChart.destroy(); // 기존 차트 초기화
+
+        myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['탑', '정글', '미드', '바텀', '서포터'],
+                datasets: [{
+                    label: '이 사이트 참여자 성향 (%)',
+                    data: userData,
+                    backgroundColor: 'rgba(10, 200, 185, 0.5)',
+                    borderColor: '#0ac8b9',
+                    borderWidth: 1
+                }, {
+                    label: '실제 인게임 플레이 빈도 (%) [논문 인용]',
+                    data: paperData,
+                    backgroundColor: 'rgba(200, 170, 110, 0.3)',
+                    borderColor: '#c8aa6e',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: { y: { beginAtZero: true, max: 100 } },
+                plugins: { legend: { labels: { color: '#f0e6d2' } } }
+            }
+        });
+    }
+
+    // 초기 실행
     updateQ();
 </script>
 
