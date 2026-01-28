@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoL-BTI: 심리 욕구 기반 포지션 진단</title>
+    <style>
+        :root { --gold: #c8aa6e; --blue: #0ac8b9; --dark: #091428; --grey: #1e2328; }
+        body { font-family: 'Malgun Gothic', sans-serif; background-color: var(--dark); color: #f0e6d2; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .card { background: #0a1428; border: 2px solid var(--gold); border-radius: 12px; max-width: 650px; width: 100%; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h1 { color: var(--gold); text-align: center; font-size: 28px; margin-bottom: 10px; }
+        .subtitle { text-align: center; color: var(--blue); margin-bottom: 30px; font-size: 0.9em; }
+        .q-text { font-size: 1.2em; margin-bottom: 25px; line-height: 1.5; text-align: center; min-height: 60px; }
+        .btn-group { display: flex; flex-direction: column; gap: 12px; }
+        button { background: var(--grey); color: var(--gold); border: 1px solid var(--gold); padding: 15px; border-radius: 5px; cursor: pointer; font-size: 1em; transition: 0.2s; }
+        button:hover { background: var(--gold); color: var(--dark); font-weight: bold; }
+        .progress-bar { height: 4px; background: #323232; margin-bottom: 20px; border-radius: 2px; }
+        .progress-fill { height: 100%; background: var(--blue); width: 0%; transition: 0.3s; }
+        #result { display: none; }
+        .result-header { text-align: center; color: var(--gold); font-size: 1.5em; margin-bottom: 20px; border-bottom: 2px solid var(--gold); padding-bottom: 10px; }
+        .role-title { font-size: 1.4em; color: var(--blue); margin: 15px 0; font-weight: bold; text-align: center; }
+        .desc-section { line-height: 1.8; text-align: left; background: #1a232e; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .profile-item { margin-bottom: 10px; padding-left: 10px; border-left: 3px solid var(--blue); }
+        .profile-label { font-weight: bold; color: var(--gold); }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>LoL-BTI 테스트</h1>
+    <p class="subtitle">학술 논문 기반: 기초심리욕구와 게임지속 참여의도 분석</p>
+    
+    <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
+
+    <div id="quiz">
+        <div id="qText" class="q-text"></div>
+        <div class="btn-group">
+            <button onclick="next(5)">매우 그렇다</button>
+            <button onclick="next(4)">그렇다</button>
+            <button onclick="next(3)">보통이다</button>
+            <button onclick="next(2)">아니다</button>
+            <button onclick="next(1)">전혀 아니다</button>
+        </div>
+    </div>
+
+    <div id="result">
+        <div class="result-header">역할군별 '롤BTI' 유형 분석 결과</div>
+        <div id="roleDisplay"></div>
+        <button onclick="location.reload()" style="width: 100%; margin-top: 20px;">다시 테스트하기</button>
+    </div>
+</div>
+
+<script>
+    const questions = [
+        { t: "A", q: "나는 팀원의 간섭 없이 나만의 독립적인 전략과 의지로 게임을 풀어나가는 것이 즐겁다." },
+        { t: "C", q: "상대 플레이어와 1대1 대결에서 승리하여 나의 실력을 증명할 때 짜릿함을 느낀다." },
+        { t: "R", q: "위험에 처한 아군을 구하거나 도움을 주었을 때 게임에 대한 큰 보람을 느낀다." },
+        { t: "A", q: "정해진 메타보다는 내가 원하는 챔피언과 플레이 스타일을 자유롭게 선택하는 것이 중요하다." },
+        { t: "C", q: "나는 게임 내에서 어려운 컨트롤이나 기술을 성공시켰을 때 성취감이 크다." },
+        { t: "R", q: "팀원들과 활발하게 소통하고 협력하여 하나의 목표를 달성하는 과정이 즐겁다." },
+        { t: "A", q: "나는 게임의 전반적인 흐름을 내가 주도적으로 컨트롤하고 있다는 느낌을 받을 때 몰입된다." },
+        { t: "C", q: "나는 다른 누구보다 팀 내에서 가장 뛰어난 지표(딜량, 골드 등)를 기록하고 싶다." },
+        { t: "R", q: "혼자 잘하는 것보다 팀 전체가 화합하여 유기적으로 움직일 때 소속감을 느낀다." },
+        { t: "C", q: "나는 패배하더라도 나의 플레이가 발전하고 실력이 상승했다면 만족감을 얻는다." }
+    ];
+
+    let currentQ = 0;
+    let scores = { A: 0, C: 0, R: 0 };
+
+    function updateQ() {
+        if(currentQ < questions.length) {
+            document.getElementById('qText').innerText = (currentQ + 1) + ". " + questions[currentQ].q;
+            document.getElementById('progressFill').style.width = ((currentQ / questions.length) * 100) + "%";
+        } else {
+            showResult();
+        }
+    }
+
+    function next(point) {
+        scores[questions[currentQ].t] += point;
+        currentQ++;
+        updateQ();
+    }
+
+    function showResult() {
+        document.getElementById('quiz').style.display = 'none';
+        document.getElementById('progressFill').style.width = "100%";
+        const display = document.getElementById('roleDisplay');
+        document.getElementById('result').style.display = 'block';
+
+        const { A, C, R } = scores;
+        let content = "";
+
+        // 논문 기반 데이터 매칭 로직
+        if (R >= 13 && A <= 9) {
+            content = generateHTML(
+                "5. 서포터 (Support)", "헌신적인 수호자형", "(R-a)",
+                "팀원을 보호하고 시야를 확보하며, 타인과의 유대감과 소통에서 가장 큰 플레이 동기를 얻습니다.",
+                "관계성(R) 최상: 모든 역할군 중 관계성이 내적 동기에 미치는 영향이 가장 압도적입니다.",
+                "자율성(A) 하: 팀의 승리를 위해 개인의 독립성보다는 지원 역할에 집중하므로 자율성의 영향이 가장 작습니다.",
+                "유능성(C) 중: 팀의 전반적인 성공에 기여하는 것으로 유능성을 충족합니다."
+            );
+        } else if (A >= 11 && C >= 16 && R <= 8) {
+            content = generateHTML(
+                "1. 탑 (Top)", "고독한 자수성가형", "(A-C-r)",
+                "독립적인 의사결정과 1대1 라인전에서의 승리를 통해 가장 큰 에너지를 얻습니다.",
+                "자율성(A) 최상: 모든 역할군 중 자율성이 내적 동기에 미치는 영향이 가장 큽니다.",
+                "유능성(C) 상: 개인의 역량으로 성과를 내는 환경에서 높은 만족감을 느낍니다.",
+                "관계성(R) 하: 타 라인과의 교류가 적어 관계성 욕구 충족이 동기 부여에 미치는 영향이 미미합니다."
+            );
+        } else if (A >= 11 && R >= 11 && C <= 14) {
+            content = generateHTML(
+                "2. 정글 (Jungle)", "자유로운 조율자형", "(A-R-c)",
+                "맵 전체를 자유롭게 누비며 팀원들을 지원하고 협력 교전을 이끌어낼 때 만족합니다.",
+                "자율성(A) 상: 맵 이동의 자유도가 높고 전술을 강제할 수 있어 자율성 충족에 유리합니다.",
+                "관계성(R) 상: 타 라인과의 소통과 협력 플레이가 잦아 관계성 욕구가 잘 충족됩니다.",
+                "유능성(C) 하: 직접적인 대인 전투보다는 중립 몬스터 사냥 비중이 있어, 경쟁 승리를 통한 유능성 획득은 상대적으로 낮게 나타납니다."
+            );
+        } else if (C >= 15 && A <= 8) {
+            content = generateHTML(
+                "3. 미드 (Mid)", "경쟁적 전략가형", "(C-R-a)",
+                "가장 치열한 중앙에서 실력을 겨루고, 빠른 판단력을 바탕으로 팀의 교전에 개입하는 것을 즐깁니다.",
+                "유능성(C) 상: 상대 미드와의 승패가 게임 전체에 미치는 영향이 커 유능성 획득에 유리합니다.",
+                "관계성(R) 중상: 맵의 중심에서 상하 지역 교전에 관여하며 협력을 통한 즐거움을 얻습니다.",
+                "자율성(A) 하: 부여된 역할과 강제되는 플레이가 많아 상대적으로 자율성 획득에는 불리한 조건입니다."
+            );
+        } else {
+            content = generateHTML(
+                "4. 바텀 (AD Carry)", "야심 찬 성과주의형", "(C-R)",
+                "팀의 후반을 책임지는 핵심 딜러로서, 치열한 경쟁 속에서 성취감을 느끼고 서포터와의 호흡을 중시합니다.",
+                "유능성(C) 상: 2대2의 첨예한 경쟁에서 승리하고 팀을 승리로 이끌 때 유능성이 크게 충족됩니다.",
+                "관계성(R) 상: 서포터와의 지속적인 소통과 협력을 통해 관계성 욕구를 충족합니다.",
+                "자율성(A) 중: 주도적인 딜링 능력과 포지셔닝을 통해 자율성을 경험합니다."
+            );
+        }
+        display.innerHTML = content;
+    }
+
+    function generateHTML(role, type, code, feat, p1, p2, p3) {
+        return `
+            <div class="role-title">${role}: "${type}" ${code}</div>
+            <div class="desc-section">
+                <p><b>특징:</b> ${feat}</p>
+                <p><b>심리 프로필:</b></p>
+                <div class="profile-item">${p1}</div>
+                <div class="profile-item">${p2}</div>
+                <div class="profile-item">${p3}</div>
+            </div>
+        `;
+    }
+
+    updateQ();
+</script>
+
+</body>
+</html>
