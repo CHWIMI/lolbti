@@ -7,13 +7,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LoL-BTI: 심리 욕구 기반 포지션 진단</title>
+    <meta property="og:title" content="LoL-BTI: 나의 롤 포지션 성향 테스트">
+    <meta property="og:description" content="논문 기반 심리 분석으로 알아보는 나의 최적 라인은 어디일까요?">
     <style>
         :root { --gold: #c8aa6e; --blue: #0ac8b9; --dark: #091428; --grey: #1e2328; }
         body { font-family: 'Malgun Gothic', sans-serif; background-color: var(--dark); color: #f0e6d2; margin: 0; padding: 20px; display: flex; justify-content: center; }
         .card { background: #0a1428; border: 2px solid var(--gold); border-radius: 12px; max-width: 650px; width: 100%; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         h1 { color: var(--gold); text-align: center; font-size: 28px; margin-bottom: 10px; }
         .subtitle { text-align: center; color: var(--blue); margin-bottom: 30px; font-size: 0.9em; }
-        .q-text { font-size: 1.2em; margin-bottom: 25px; line-height: 1.5; text-align: center; min-height: 60px; }
+        .q-text { font-size: 1.2em; margin-bottom: 25px; line-height: 1.5; text-align: center; min-height: 80px; word-break: keep-all; }
         .btn-group { display: flex; flex-direction: column; gap: 12px; }
         button { background: var(--grey); color: var(--gold); border: 1px solid var(--gold); padding: 15px; border-radius: 5px; cursor: pointer; font-size: 1em; transition: 0.2s; }
         button:hover { background: var(--gold); color: var(--dark); font-weight: bold; }
@@ -59,7 +61,7 @@
 </div>
 
 <script>
-    // 1. Firebase 설정 (본인의 키로 유지하세요)
+    // 1. Firebase 설정
     const firebaseConfig = {
         apiKey: "AIzaSyDz6_PCsvr9BqTqNDAmPocLYeXHgGIedUE",
         authDomain: "lolbti.firebaseapp.com",
@@ -73,21 +75,41 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    // 2. 질문 리스트 (15문항)
     const questions = [
-        { t: "A", q: "나는 팀원의 간섭 없이 나만의 독립적인 전략과 의지로 게임을 풀어나가는 것이 즐겁다." },
-        { t: "C", q: "상대 플레이어와 1대1 대결에서 승리하여 나의 실력을 증명할 때 짜릿함을 느낀다." },
-        { t: "R", q: "위험에 처한 아군을 구하거나 도움을 주었을 때 게임에 대한 큰 보람을 느낀다." },
-        { t: "A", q: "정해진 메타보다는 내가 원하는 챔피언과 플레이 스타일을 자유롭게 선택하는 것이 중요하다." },
-        { t: "C", q: "나는 게임 내에서 어려운 컨트롤이나 기술을 성공시켰을 때 성취감이 크다." },
-        { t: "R", q: "팀원들과 활발하게 소통하고 협력하여 하나의 목표를 달성하는 과정이 즐겁다." },
-        { t: "A", q: "나는 게임의 전반적인 흐름을 내가 주도적으로 컨트롤하고 있다는 느낌을 받을 때 몰입된다." },
-        { t: "C", q: "나는 다른 누구보다 팀 내에서 가장 뛰어난 지표(딜량, 골드 등)를 기록하고 싶다." },
-        { t: "R", q: "혼자 잘하는 것보다 팀 전체가 화합하여 유기적으로 움직일 때 소속감을 느낀다." },
-        { t: "C", q: "나는 패배하더라도 나의 플레이가 발전하고 실력이 상승했다면 만족감을 얻는다." }
+        // --- 자율성 (A) ---
+        { t: "A", q: "나는 팀원의 간섭이나 훈수 없이, 오로지 내 판단대로 플레이할 때 가장 편안하다." },
+        { t: "A", q: "유행하는 '1티어 챔피언'이라도 내 손에 맞지 않거나 재미없으면 절대 하지 않는다." },
+        { t: "A", q: "게임의 운영이나 동선을 짤 때, 남을 따라가기보다 내가 주도해서 판을 짜는 편이다." },
+        { t: "A", q: "팀원의 오더가 내 생각과 다르면, 과감하게 무시하고 내 방식대로 행동할 때가 있다." },
+        { t: "A", q: "나는 어디에 구속받지 않고 맵을 자유롭게 활용하거나 독자적인 스플릿 푸시를 할 때 즐겁다." },
+
+        // --- 유능성 (C) ---
+        { t: "C", q: "상대와의 1대1 라인전이나 피지컬 싸움에서 승리하여 서열을 정리할 때 희열을 느낀다." },
+        { t: "C", q: "나는 게임이 끝난 후 딜량 그래프나 KDA 지표가 팀 내 1등이어야 직성이 풀린다." },
+        { t: "C", q: "복잡한 콤보나 논타겟 스킬을 화려하게 적중시켜 나의 '손맛'을 느끼는 것이 중요하다." },
+        { t: "C", q: "게임에서 지더라도, 내 라인전에서 이겼거나 내 실력이 늘었다면 만족하는 편이다." },
+        { t: "C", q: "팀원들이 나에게 '캐리했다', '버스 기사다'라고 칭찬해 줄 때 가장 큰 보람을 느낀다." },
+
+        // --- 관계성 (R) ---
+        { t: "R", q: "내가 돋보이는 것보다, 위험에 처한 아군을 살려내거나 돕는 플레이가 더 가치 있다고 생각한다." },
+        { t: "R", q: "팀원들과 끊임없이 채팅이나 핑으로 소통하며 '하나의 팀'으로 움직일 때 즐거움을 느낀다." },
+        { t: "R", q: "나는 팀의 조합이나 시너지를 맞추기 위해 기꺼이 내가 원하지 않는 역할을 맡을 수 있다." },
+        { t: "R", q: "아무리 게임을 이겨도 팀 분위기가 험악하면 그 게임은 재미없게 느껴진다." },
+        { t: "R", q: "완벽한 이니시에이팅으로 팀원들이 편하게 딜을 넣을 수 있도록 판을 깔아줄 때 행복하다." }
     ];
 
     let currentQ = 0;
     let scores = { A: 0, C: 0, R: 0 };
+
+    // 3. 랜덤 셔플 함수 (피셔-예이츠 알고리즘)
+    function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
 
     function updateQ() {
         if(currentQ < questions.length) {
@@ -99,100 +121,98 @@
     }
 
     function next(point) {
+        // 섞여 있어도 questions[currentQ].t 덕분에 점수는 정확한 타입(A,C,R)에 쌓임
         scores[questions[currentQ].t] += point;
         currentQ++;
         updateQ();
     }
 
-function showResult() {
-    document.getElementById('quiz').style.display = 'none';
-    document.getElementById('progressFill').style.width = "100%";
-    const display = document.getElementById('roleDisplay');
-    document.getElementById('result').style.display = 'block';
+    function showResult() {
+        document.getElementById('quiz').style.display = 'none';
+        document.getElementById('progressFill').style.width = "100%";
+        const display = document.getElementById('roleDisplay');
+        document.getElementById('result').style.display = 'block';
 
-    const { A, C, R } = scores;
+        const { A, C, R } = scores;
+        
+        // 정규화된 가중치 로직 적용 (비율 기반 매칭)
+        const profiles = {
+            top: { a: 0.50, c: 0.41, r: 0.09 },
+            jungle: { a: 0.47, c: 0.18, r: 0.35 },
+            mid: { a: 0.44, c: 0.15, r: 0.41 },
+            bottom: { a: 0.52, c: 0.29, r: 0.19 },
+            supporter: { a: 0.14, c: 0.31, r: 0.55 }
+        };
 
-    // 1. 각 역할군의 가중치를 '비율(%)'로 변환하여 정규화 (논문 데이터 기반)
-    // 이를 통해 특정 역할군이 점수를 독점하는 현상을 방지합니다.
-    const profiles = {
-        top: { a: 0.50, c: 0.41, r: 0.09 },       // 자율/유능 중심 
-        jungle: { a: 0.47, c: 0.18, r: 0.35 },    // 자율/관계 중심 
-        mid: { a: 0.44, c: 0.15, r: 0.41 },       // 관계/자율 균형 
-        bottom: { a: 0.52, c: 0.29, r: 0.19 },    // 유능/자율 중심 
-        supporter: { a: 0.14, c: 0.31, r: 0.55 }  // 관계성 압도적 
-    };
+        const totalScore = A + C + R;
+        const userA = A / totalScore;
+        const userC = C / totalScore;
+        const userR = R / totalScore;
 
-    // 2. 사용자의 응답 점수도 비율(%)로 변환
-    const totalScore = A + C + R;
-    const userA = A / totalScore;
-    const userC = C / totalScore;
-    const userR = R / totalScore;
+        const calcDistance = (p) => {
+            return Math.sqrt(
+                Math.pow(userA - p.a, 2) + 
+                Math.pow(userC - p.c, 2) + 
+                Math.pow(userR - p.r, 2)
+            );
+        };
 
-    // 3. 사용자의 성향 비율과 가장 '거리'가 가까운 역할군 찾기 (유사도 계산)
-    const calcDistance = (p) => {
-        return Math.sqrt(
-            Math.pow(userA - p.a, 2) + 
-            Math.pow(userC - p.c, 2) + 
-            Math.pow(userR - p.r, 2)
-        );
-    };
+        const results = [
+            { id: "top", dist: calcDistance(profiles.top) },
+            { id: "jungle", dist: calcDistance(profiles.jungle) },
+            { id: "mid", dist: calcDistance(profiles.mid) },
+            { id: "bottom", dist: calcDistance(profiles.bottom) },
+            { id: "supporter", dist: calcDistance(profiles.supporter) }
+        ];
 
-    const results = [
-        { id: "top", dist: calcDistance(profiles.top) },
-        { id: "jungle", dist: calcDistance(profiles.jungle) },
-        { id: "mid", dist: calcDistance(profiles.mid) },
-        { id: "bottom", dist: calcDistance(profiles.bottom) },
-        { id: "supporter", dist: calcDistance(profiles.supporter) }
-    ];
+        results.sort((a, b) => a.dist - b.dist);
+        const bestFit = results[0].id;
 
-    // 거리가 가장 짧은(가장 닮은) 역할군 선택
-    results.sort((a, b) => a.dist - b.dist);
-    const bestFit = results[0].id;
+        let content = "";
+        let finalRole = "";
 
-    let content = "";
-    let finalRole = "";
+        // 결과 텍스트 생성
+        if (bestFit === "top") {
+            finalRole = "탑";
+            content = generateHTML("1. 탑 (Top)", "고독한 자수성가형", "(A-C-r)", 
+                "독립적인 의사결정과 1대1 라인전에서의 승리를 통해 가장 큰 에너지를 얻습니다.",
+                "**자율성(A)** 최상: 모든 역할군 중 자율성이 내적 동기에 미치는 영향이 가장 큽니다.",
+                "**유능성(C)** 상: 개인의 역량으로 성과를 내는 환경에서 높은 만족감을 느낍니다.",
+                "**관계성(R)** 하: 타 라인과의 교류가 적어 관계성 욕구가 동기 부여에 미치는 영향이 미미합니다.");
+        } else if (bestFit === "jungle") {
+            finalRole = "정글";
+            content = generateHTML("2. 정글 (Jungle)", "자유로운 조율자형", "(A-R-c)", 
+                "맵 전체를 자유롭게 누비며 팀원들을 지원하고 협력 교전을 이끌어낼 때 만족합니다.",
+                "**자율성(A)** 상: 맵 이동의 자유도가 높고 전술을 강제할 수 있어 자율성 충족에 유리합니다.",
+                "**관계성(R)** 상: 타 라인과의 소통과 협력 플레이가 잦아 관계성 욕구가 잘 충족됩니다.",
+                "**유능성(C)** 하: 전투보다 운영 비중이 있어 유능성 획득 영향력은 상대적으로 낮습니다.");
+        } else if (bestFit === "mid") {
+            finalRole = "미드";
+            content = generateHTML("3. 미드 (Mid)", "경쟁적 전략가형", "(C-R-a)", 
+                "치열한 중앙에서 실력을 겨루고, 빠른 판단력을 바탕으로 팀의 교전에 개입하는 것을 즐깁니다.",
+                "**유능성(C)** 상: 상대 미드와의 승패가 게임 전체에 미치는 영향이 커 유능성 획득에 유리합니다.",
+                "**관계성(R)** 중상: 맵의 중심에서 상하 지역 교전에 관여하며 협력을 통해 즐거움을 얻습니다.",
+                "**자율성(A)** 하: 부여된 역할이 많아 상대적으로 자율성 획득에는 불리한 조건입니다.");
+        } else if (bestFit === "supporter") {
+            finalRole = "서포터";
+            content = generateHTML("5. 서포터 (Support)", "헌신적인 수호자형", "(R-a)", 
+                "팀원을 보호하고 시야를 확보하며, 타인과의 유대감에서 가장 큰 동기를 얻습니다.",
+                "**관계성(R)** 최상: 모든 역할군 중 관계성이 내적 동기에 미치는 영향이 가장 압도적입니다.",
+                "**자율성(A)** 하: 개인의 독립성보다는 지원 역할에 집중하므로 자율성의 영향이 가장 작습니다.",
+                "**유능성(C)** 중: 팀의 전반적인 성공에 기여하는 것으로 유능성을 충족합니다.");
+        } else {
+            finalRole = "바텀";
+            content = generateHTML("4. 바텀 (AD Carry)", "야심 찬 성과주의형", "(C-R)", 
+                "팀의 후반을 책임지는 핵심 딜러로서 성취감을 느끼고 서포터와의 호흡을 중시합니다.",
+                "**유능성(C)** 상: 첨예한 경쟁에서 승리하고 팀을 승리로 이끌 때 유능성이 크게 충족됩니다.",
+                "**관계성(R)** 상: 서포터와의 지속적인 소통과 협력을 통해 관계성 욕구를 충족합니다.",
+                "**자율성(A)** 중: 주도적인 딜링 능력과 포지셔닝을 통해 자율성을 경험합니다.");
+        }
 
-    // 4. 결과 출력 로직 (동일)
-    if (bestFit === "top") {
-        finalRole = "탑";
-        content = generateHTML("1. 탑 (Top)", "고독한 자수성가형", "(A-C-r)", 
-            "독립적인 의사결정과 1대1 라인전에서의 승리를 통해 가장 큰 에너지를 얻습니다. [cite: 110-112, 332]",
-            "**자율성(A)** 최상: 모든 역할군 중 자율성이 내적 동기에 미치는 영향이 가장 큽니다. ",
-            "**유능성(C)** 상: 개인의 역량으로 성과를 내는 환경에서 높은 만족감을 느낍니다. [cite: 334]",
-            "**관계성(R)** 하: 타 라인과의 교류가 적어 관계성 욕구가 동기 부여에 미치는 영향이 미미합니다. [cite: 113, 337]");
-    } else if (bestFit === "jungle") {
-        finalRole = "정글";
-        content = generateHTML("2. 정글 (Jungle)", "자유로운 조율자형", "(A-R-c)", 
-            "맵 전체를 자유롭게 누비며 팀원들을 지원하고 협력 교전을 이끌어낼 때 만족합니다. [cite: 115-116]",
-            "**자율성(A)** 상: 맵 이동의 자유도가 높고 전술을 강제할 수 있어 자율성 충족에 유리합니다. [cite: 118]",
-            "**관계성(R)** 상: 타 라인과의 소통과 협력 플레이를 통해 관계성 욕구가 잘 충족됩니다. [cite: 117]",
-            "**유능성(C)** 하: 전투보다 운영 비중이 있어 유능성 획득 영향력은 상대적으로 낮습니다. [cite: 119, 336]");
-    } else if (bestFit === "mid") {
-        finalRole = "미드";
-        content = generateHTML("3. 미드 (Mid)", "경쟁적 전략가형", "(C-R-a)", 
-            "치열한 중앙에서 실력을 겨루고, 빠른 판단력을 바탕으로 팀의 교전에 개입하는 것을 즐깁니다. [cite: 120-121]",
-            "**유능성(C)** 상: 상대 미드와의 승패가 게임 전체에 미치는 영향이 커 유능성 획득에 유리합니다. [cite: 122-123]",
-            "**관계성(R)** 중상: 맵의 중심에서 교전에 관여하며 협력을 통해 즐거움을 얻습니다. [cite: 124]",
-            "**자율성(A)** 하: 부여된 역할이 많아 상대적으로 자율성 획득에는 불리한 조건입니다. [cite: 125]");
-    } else if (bestFit === "supporter") {
-        finalRole = "서포터";
-        content = generateHTML("5. 서포터 (Support)", "헌신적인 수호자형", "(R-a)", 
-            "팀원을 보호하고 시야를 확보하며, 타인과의 유대감에서 가장 큰 동기를 얻습니다. [cite: 129-132]",
-            "**관계성(R)** 최상: 모든 역할군 중 관계성이 내적 동기에 미치는 영향이 가장 압도적입니다. [cite: 296, 338]",
-            "**자율성(A)** 하: 개인의 독립성보다는 지원 역할에 집중하므로 자율성의 영향이 가장 작습니다. [cite: 333]",
-            "**유능성(C)** 중: 팀의 전반적인 성공에 기여하는 것으로 유능성을 충족합니다.");
-    } else {
-        finalRole = "바텀";
-        content = generateHTML("4. 바텀 (AD Carry)", "야심 찬 성과주의형", "(C-R)", 
-            "팀의 후반을 책임지는 핵심 딜러로서 성취감을 느끼고 서포터와의 호흡을 중시합니다. [cite: 126-127]",
-            "**유능성(C)** 상: 첨예한 경쟁에서 승리하고 팀을 승리로 이끌 때 유능성이 크게 충족됩니다. [cite: 128, 133]",
-            "**관계성(R)** 상: 서포터와의 지속적인 소통과 협력을 통해 관계성 욕구를 충족합니다. [cite: 128]",
-            "**자율성(A)** 중: 주도적인 딜링 능력과 포지셔닝을 통해 자율성을 경험합니다.");
+        display.innerHTML = content;
+        saveData(finalRole);
     }
 
-    display.innerHTML = content;
-    saveData(finalRole);
-}
     function generateHTML(role, type, code, feat, p1, p2, p3) {
         return `
             <div class="role-title">${role}: "${type}" ${code}</div>
@@ -253,7 +273,7 @@ function showResult() {
                     borderColor: '#0ac8b9',
                     borderWidth: 1
                 }, {
-                    label: '24년 1분기 인게임 지표 (%)',
+                    label: '인게임 지표 (%)',
                     data: paperData,
                     backgroundColor: 'rgba(200, 170, 110, 0.3)',
                     borderColor: '#c8aa6e',
@@ -268,9 +288,10 @@ function showResult() {
         });
     }
 
+    // [중요] 질문 섞고 퀴즈 시작
+    shuffle(questions);
     updateQ();
 </script>
 
 </body>
 </html>
-
